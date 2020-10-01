@@ -1,4 +1,4 @@
-# aviata
+# AVIATA
 
 ## Backend
 
