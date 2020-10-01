@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FLY</title>
+    <!-- CSS only -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous" />
+    <!-- development version, includes helpful console warnings -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.20.0/axios.min.js"></script>
+</head>
+
+<body>
+    <div class="container" id="app">
+        <div class="row">
+            <div class="card col-md-12 m-3">
+                <div class="car-title">
+                    <h3 class="card-title m-3">Select directions</h3>
+                </div>
+                <div class="card-body">
+                    <form>
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col">
+                                <select class="form-control" id="exampleFormControlSelect1" name="fly_from" v-model="from">
+                    <option value="0">...</option>
+                    {% for id, direction in directions.items %}
+                    <option value="{{id}}">{{direction}}</option>
+                    {% endfor %}
+                  </select>
+                            </div>
+                            <div class="col">
+                                <select class="form-control" id="exampleFormControlSelect2" name="fly_to" v-model="to">
+                    <option value="0">...</option>
+                    {% for id, direction in directions.items %}
+                    <option value="{{id}}">{{direction}}</option>
+                    {% endfor %}
+                  </select>
+                            </div>
+                            <div class="col">
+                                <select class="form-control" id="exampleFormControlSelect2" name="curr" v-model="curr">
+                    <option value="0">...</option>
+                    {% for id, curr in currency.items %}
+                    <option value="{{id}}">{{curr}}</option>
+                    {% endfor %}
+                  </select>
+                            </div>
+                        </div>
+                        <div class="form-group mt-3">
+                            <a class="btn btn-primary float-right" @click="getData()">
+                  find <i class="fa fa-search" aria-hidden="true"></i>
+                </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="row mb-3" v-if="flag">
+            <div class="col-md-10 offset-md-1">
+                <div class="card">
+                    <div class="card-title">
+                        <h3 class="card-title m-3">Flights</h3>
+                    </div>
+                    <div class="card-body m-3">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th scope="col">countryFrom</th>
+                                    <th scope="col">cityFrom</th>
+                                    <th scope="col">cityTo</th>
+                                    <th scope="col">fly_duration</th>
+                                    <th scope="col">price</th>
+                                    <th scope="col">airlines</th>
+                                    <th scope="col">check</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in data">
+                                    <td>
+                                        [[ item.countryFrom.code + "_" + item.countryFrom.name ]]
+                                    </td>
+                                    <td>[[ item.cityFrom ]]</td>
+                                    <td>[[ item.cityTo ]]</td>
+                                    <td>[[ item.fly_duration ]]</td>
+                                    <td>[[ item.price ]]{{curr}}</td>
+                                    <td>[[ item.airlines.join(', ') ]]</td>
+                                    <td>
+                                        <i class="fa fa-question-circle fa-2x text-warning" aria-hidden="true" @click="checkFly(item.booking_token)"></i>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:8000/";
+        var app = new Vue({
+            delimiters: ["[[", "]]"],
+            el: "#app",
+            data: {
+                cookie: "",
+                from: "",
+                to: "",
+                curr: "",
+                data: [],
+                flag: false,
+                check: "",
+            },
+            mounted: function() {},
+            methods: {
+                getData: function() {
+                    var vue = this;
+                    var csrf = document.querySelector(
+                        "input[name = csrfmiddlewaretoken]"
+                    ).value;
+                    axios
+                        .get(API + "get-data/", {
+                            params: {
+                                from: vue.from,
+                                to: vue.to,
+                                curr: vue.curr,
+                            },
+                        })
+                        .then(function(response) {
+                            vue.data = JSON.parse(response.data);
+                            vue.flag = true;
+                            console.log(vue.data);
+                        });
+                },
+                checkFly: function(booking_token) {
+                    var vue = this;
+                    const formData = new FormData();
+                    formData.append("token", booking_token);
+                    axios.post(API + "check-fly/", formData).then(function(response) {
+                        vue.check = response.data;
+                        console.log(vue.check);
+                        var airlines = "";
+                        vue.check.flights.forEach(function(item, i, params) {
+                            airlines += params[i].airline.Name + ";";
+                        });
+                        if (vue.check.flights_checked === true) {
+                            var message =
+                                " flights_checked: " +
+                                vue.check.flights_checked +
+                                ", tickets_price: " +
+                                vue.check.tickets_price +
+                                " max_passengers: " +
+                                vue.check.max_passengers +
+                                " airlines: " +
+                                airlines;
+                            alert(message);
+                        }
+                    });
+                },
+            },
+        });
+    </script>
+    <!-- JS, Popper.js, and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+</body>
+
+</html>
