@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone, dateformat
+from datetime import datetime, time
 
 from django.core.cache import cache
 
@@ -40,6 +41,11 @@ def index(request):
 
 
 def getflys(request):
+    midnight = 60 * 60 * 24
+    now = datetime.now()
+    seconds_since_midnight = (
+        now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+    cache_time = midnight - seconds_since_midnight
 
     date_from = dateformat.format(timezone.now(), 'd/m/Y')
     date_to = dateformat.format(
@@ -67,20 +73,20 @@ def getflys(request):
             request.GET.get('from') + '_' + request.GET.get('to') +
             '_' + request.GET.get('curr'),
             data,
-            86400
+            cache_time
         )
 
     context = cache.get_or_set(
         request.GET.get('from') + '_' + request.GET.get('to') +
         '_' + request.GET.get('curr'),
         data,
-        86400
+        cache_time
     )
 
     return JsonResponse(json.dumps(context), safe=False)
 
 
-@csrf_exempt
+@ csrf_exempt
 def checkfly(request):
 
     url = CHECK_FLY + """v=2&booking_token=""" + request.POST.get(
